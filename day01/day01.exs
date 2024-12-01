@@ -2,11 +2,7 @@ defmodule Day01 do
   def solve1(file) do
     sorted_groups(file)
     |> Enum.zip_reduce([], fn [head | tail], acc ->
-      if head > hd(tail) do
-        [head - hd(tail) | acc]
-      else
-        [hd(tail) - head | acc]
-      end
+      [abs(hd(tail) - head) | acc]
     end)
     |> Enum.sum()
   end
