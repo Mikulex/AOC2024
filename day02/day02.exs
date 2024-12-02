@@ -37,21 +37,23 @@ defmodule Day02 do
     cond do
       (abs(diff) > 3 || diff == 0) ->
         if not keywords[:modified] do
-          safe_when_dampened?([head, third | tail], modified: true)
+          safe_when_dampened?([head, third | tail], modified: true) || safe_when_dampened?([head, second | tail], modified: true)
         else
           false
         end
       # decreasing
       head > second -> cond do
         second > third ->safe_when_dampened?([second, third | tail], modified: keywords[:modified])
-        second <= third && not keywords[:modified] -> safe_when_dampened?([head, third | tail], modified: true)
+        second <= third && not keywords[:modified] -> safe_when_dampened?([head, third | tail], modified: true) || safe_when_dampened?([head, second | tail], modified: true)
+
         second <= third && keywords[:modified] -> false
       end
       # increasing
       head < second -> cond do
         second < third -> safe_when_dampened?([second, third | tail], modified: keywords[:modified])
-        second >= third && not keywords[:modified]-> safe_when_dampened?([head, third | tail], modified: true)
-        second >= third && keywords[:modified]-> false
+        second >= third && not keywords[:modified] -> safe_when_dampened?([head, third | tail], modified: true) || safe_when_dampened?([head, second | tail], modified: true)
+
+        second >= third && keywords[:modified] -> false
       end
       true -> false
     end
