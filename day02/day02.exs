@@ -4,8 +4,7 @@ defmodule Day02 do
     |> String.split("\n", trim: true)
     |> Enum.map(&String.split(&1))
     |> Enum.map(&Enum.map(&1, fn val -> String.to_integer(val) end))
-    |> Enum.map(&Day02.safe?(&1))
-    |> Enum.count(&(&1))
+    |> Enum.count(&Day02.safe?(&1))
   end
 
   def solve2(file) do
@@ -13,8 +12,7 @@ defmodule Day02 do
     |> String.split("\n", trim: true)
     |> Enum.map(&String.split(&1))
     |> Enum.map(&Enum.map(&1, fn val -> String.to_integer(val) end))
-    |> Enum.map(&Day02.safe_when_dampened?(&1, modified: false))
-    |> Enum.count(&(&1))
+    |> Enum.filter(&(not Day02.safe_when_dampened?(&1, modified: false)))
   end
 
   def safe?([head, second, third | tail]) do
@@ -60,7 +58,12 @@ defmodule Day02 do
   end
 
   def safe_when_dampened?([head, second], keywords) do
-    abs(head - second) <= 3
+    # if none were modified yet, we can just ignore the last pair
+    if not keywords[:modified] do 
+      true
+    else 
+      abs(head - second) <= 3
+    end
   end
 end
 
@@ -70,4 +73,4 @@ input = "input.txt"
 IO.inspect(Day02.solve1(demo))
 IO.inspect(Day02.solve1(input))
 IO.inspect(Day02.solve2(demo))
-IO.inspect(Day02.solve2(input))
+IO.inspect(Day02.solve2(input), charlists: :as_lists)
