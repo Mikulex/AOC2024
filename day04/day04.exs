@@ -18,8 +18,12 @@ defmodule Day04 do
 
     line_length = length(Enum.at(matrix, 0))
 
-    diag_desc =
-      matrix |> count_diagonals(line_length)
+    diag_asc = count_diags(matrix, line_length, :asc)
+    diag_desc = count_diags(matrix, line_length, :desc)
+
+    IO.puts("- #{horizontals}, | #{verticals}, / #{diag_asc}, \\ #{diag_desc}")
+
+    horizontals + verticals + diag_asc + diag_desc
   end
 
   def count_horizontals(list) do
@@ -30,11 +34,36 @@ defmodule Day04 do
     |> Enum.count(fn word -> word == "XMAS" || word == "SAMX" end)
   end
 
-  def count_diagonals(matrix, length, total \\ 0, [x, y] \\ [0, 0]) do
+  def count_diags(matrix, len, sum \\ 0, [x, y] \\ [0, 0], dir) do
     cond do
-      x >= length - 3 > count_diagonals(matrix, length, total, {0, y + 1})
-      y >= length - 3 > total
+      y >= len - 3 ->
+        sum
+
+      x >= len && dir == :asc ->
+        count_diags(matrix, len, sum, [3, y + 1], dir)
+
+      x > len - 4 && dir == :desc ->
+        count_diags(matrix, len, sum, [0, y + 1], dir)
+
+      true ->
+        count_diags(matrix, len, sum + diagonal_match(matrix, x, y, dir), [x + 1, y], dir)
     end
+  end
+
+  def diagonal_match(matrix, x, y, dir) do
+    substring =
+      if dir == :asc do
+        for y_off <- 0..3, x_off <- 0..-3, abs(x_off) == y_off do
+          get_in(matrix, [Access.at(y + y_off), Access.at(x + x_off)])
+        end
+      else
+        for y_off <- 0..3, x_off <- 0..3, x_off == y_off do
+          get_in(matrix, [Access.at(x + x_off), Access.at(y + y_off)])
+        end
+      end
+      |> Enum.join()
+
+    if Enum.member?(["XMAS", "SAMX"], substring), do: 1, else: 0
   end
 
   def solve2(file) do
@@ -46,7 +75,7 @@ input = "input.txt"
 
 IO.inspect(Day04.solve1(demo))
 # 2387 < x < 2438
-# != 2394
+# != 2394 != 2415
 IO.inspect(Day04.solve1(input))
 # IO.inspect(Day04.solve2(demo))
 # IO.inspect(Day04.solve2(input))
