@@ -6,6 +6,36 @@ defmodule Day04 do
     |> xmas_matches()
   end
 
+  def solve2(file) do
+    matrix =
+      File.read!(file)
+      |> String.split("\n", trim: true)
+      |> Enum.map(&String.split(&1, "", trim: true))
+
+    len = length(matrix)
+
+    patterns =
+      for y <- 1..(len - 2), x <- 1..(len - 2), do: mas_patterns(matrix, x, y)
+
+    patterns |> Enum.count(&valid_pattern/1)
+  end
+
+  def mas_patterns(matrix, x, y) do
+    for y_off <- -1..1, x_off <- -1..1, abs(x_off) == abs(y_off) do
+      get_in(matrix, [Access.at(y + y_off), Access.at(x + x_off)])
+    end
+  end
+
+  def valid_pattern(pattern) do
+    case pattern do
+      # bottom same
+      [a, a, "A", b, b] when (a == "M" or a == "S") and (b == "M" or b == "S") and a != b -> true
+      # side same
+      [a, b, "A", a, b] when (a == "M" or a == "S") and (b == "M" or b == "S") and a != b -> true
+      _ -> false
+    end
+  end
+
   def xmas_matches(matrix) do
     horizontals =
       matrix
@@ -29,7 +59,7 @@ defmodule Day04 do
   def count_horizontals(list) do
     list
     |> Enum.map(&Enum.chunk_every(&1, 4, 1, :discard))
-    |> Enum.map(fn row -> Enum.map(row, &Enum.join(&1)) end)
+    |> Enum.map(fn row -> Enum.map(row, &Enum.join/1) end)
     |> List.flatten()
     |> Enum.count(fn word -> word == "XMAS" || word == "SAMX" end)
   end
@@ -65,17 +95,12 @@ defmodule Day04 do
 
     if Enum.member?(["XMAS", "SAMX"], substring), do: 1, else: 0
   end
-
-  def solve2(file) do
-  end
 end
 
 demo = "demo.txt"
 input = "input.txt"
 
 IO.inspect(Day04.solve1(demo))
-# 2387 < x < 2438
-# != 2394 != 2415
 IO.inspect(Day04.solve1(input))
-# IO.inspect(Day04.solve2(demo))
-# IO.inspect(Day04.solve2(input))
+IO.inspect(Day04.solve2(demo))
+IO.inspect(Day04.solve2(input))
