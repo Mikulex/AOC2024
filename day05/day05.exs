@@ -71,7 +71,7 @@ defmodule Day05 do
 
           {_, vals} ->
             # get idx of the first element of the list that is part of the mapping
-            new_idx = Enum.find_index(Enum.reverse(list), &Enum.member?(vals, &1))
+            new_idx = Enum.find_index(Enum.reverse(list), &(&1 in vals))
 
             if(new_idx != nil) do
               fix_list(Enum.slide(list, idx, length(list) - new_idx - 1), idx, reqs)
