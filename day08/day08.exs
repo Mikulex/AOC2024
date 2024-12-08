@@ -41,15 +41,9 @@ defmodule Day08 do
     |> Enum.map(fn line -> String.split(line, "", trim: true) end)
   end
 
-  def get_antinode_stream([a, b]) do
-    vec =
-      Enum.zip_reduce(a, b, [], fn a_i, b_i, acc -> [b_i - a_i | acc] end)
-      |> Enum.reverse()
-
-    Stream.iterate(b, fn b_n ->
-      Enum.zip_reduce(vec, b_n, [], fn vec_i, b_i, acc -> [vec_i + b_i | acc] end)
-      |> Enum.reverse()
-    end)
+  def get_antinode_stream([[a_x, a_y], [b_x, b_y]]) do
+    [v_x, v_y] = [b_x - a_x, b_y - a_y]
+    Stream.iterate([b_x, b_y], fn [b_nx, b_ny] -> [v_x + b_nx, v_y + b_ny] end)
   end
 
   def out_of_bounds?(matrix, [x, y]),
