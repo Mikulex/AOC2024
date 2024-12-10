@@ -1,20 +1,15 @@
 defmodule Day10 do
-  def solve1(file) do
+  def solve(file) do
     matrix = parse(file)
 
     matrix
     |> get_start_points()
     |> Enum.map(&trace(&1, matrix))
-    |> Enum.reduce(0, fn map, acc -> acc + MapSet.size(map) end)
-  end
-
-  def solve2(file) do
-    matrix = parse(file)
-
-    matrix
-    |> get_start_points()
-    |> Enum.map(&trace_count(&1, matrix))
-    |> Enum.sum()
+    |> Enum.reduce([p1: 0, p2: 0], fn {set, sum}, acc ->
+      acc
+      |> Keyword.update(:p1, nil, &(&1 + MapSet.size(set)))
+      |> Keyword.update(:p2, nil, &(&1 + sum))
+    end)
   end
 
   def get_start_points(matrix) do
@@ -26,40 +21,21 @@ defmodule Day10 do
     |> Enum.filter(&match?({0, _}, &1))
   end
 
-  def trace_count({height, {x, y}}, matrix, count \\ 0) do
-    cond do
-      height == 9 ->
-        count + 1
+  def trace(point, matrix, ends \\ MapSet.new(), count \\ 0)
 
-      true ->
-        {x, y}
-        |> relevant_paths(height, matrix)
-        |> Enum.map(fn point -> trace_count(point, matrix, count) end)
-        |> Enum.reduce(0, fn c, acc -> c + acc end)
-    end
-  end
+  def trace({9, {x, y}}, _matrix, ends, count), do: {MapSet.put(ends, {x, y}), count + 1}
 
-  def trace({height, {x, y}}, matrix, ends \\ MapSet.new()) do
-    cond do
-      height == 9 ->
-        ends |> MapSet.put({x, y})
-
-      true ->
-        {x, y}
-        |> relevant_paths(height, matrix)
-        |> Enum.map(fn point -> trace(point, matrix, ends) end)
-        |> Enum.reduce(MapSet.new(), fn map, acc -> MapSet.union(map, acc) end)
-    end
-  end
-
-  def relevant_paths({x, y}, height, matrix) do
+  def trace({height, {x, y}}, matrix, ends, count) do
     {x, y}
     |> offsets()
     |> Enum.reject(&out_of_bounds?(matrix, &1))
     |> Enum.filter(fn {x_i, y_i} ->
       height + 1 == get_in(matrix, [Access.at!(y_i), Access.at!(x_i)])
     end)
-    |> Enum.map(fn coords -> {height + 1, coords} end)
+    |> Enum.map(fn coords -> trace({height + 1, coords}, matrix, ends, count) end)
+    |> Enum.reduce({MapSet.new(), 0}, fn {map, count}, {acc_m, acc_c} ->
+      {MapSet.union(map, acc_m), acc_c + count}
+    end)
   end
 
   def parse(file) do
@@ -79,7 +55,5 @@ end
 demo = "demo.txt"
 input = "input.txt"
 
-IO.inspect(Day10.solve1(demo))
-IO.inspect(Day10.solve1(input))
-IO.inspect(Day10.solve2(demo))
-IO.inspect(Day10.solve2(input))
+IO.inspect(Day10.solve(demo))
+IO.inspect(Day10.solve(input))
