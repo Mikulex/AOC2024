@@ -3,11 +3,7 @@ defmodule Day10 do
     matrix = parse(file)
 
     matrix
-    |> Enum.with_index(fn line, y ->
-      Enum.with_index(line, fn el, x -> {el, {x, y}} end)
-    end)
-    |> Enum.flat_map(&Function.identity/1)
-    |> Enum.filter(&match?({0, _}, &1))
+    |> get_start_points()
     |> Enum.map(&trace(&1, matrix))
     |> Enum.reduce(0, fn map, acc -> acc + MapSet.size(map) end)
   end
@@ -16,13 +12,18 @@ defmodule Day10 do
     matrix = parse(file)
 
     matrix
+    |> get_start_points()
+    |> Enum.map(&trace_count(&1, matrix))
+    |> Enum.sum()
+  end
+
+  def get_start_points(matrix) do
+    matrix
     |> Enum.with_index(fn line, y ->
       Enum.with_index(line, fn el, x -> {el, {x, y}} end)
     end)
     |> Enum.flat_map(&Function.identity/1)
     |> Enum.filter(&match?({0, _}, &1))
-    |> Enum.map(&trace_count(&1, matrix))
-    |> Enum.sum()
   end
 
   def trace_count({height, {x, y}}, matrix, count \\ 0) do
@@ -32,12 +33,7 @@ defmodule Day10 do
 
       true ->
         {x, y}
-        |> offsets()
-        |> Enum.reject(&out_of_bounds?(matrix, &1))
-        |> Enum.filter(fn {x_i, y_i} ->
-          height + 1 == get_in(matrix, [Access.at!(y_i), Access.at!(x_i)])
-        end)
-        |> Enum.map(fn coords -> {height + 1, coords} end)
+        |> relevant_paths(height, matrix)
         |> Enum.map(fn point -> trace_count(point, matrix, count) end)
         |> Enum.reduce(0, fn c, acc -> c + acc end)
     end
@@ -50,15 +46,20 @@ defmodule Day10 do
 
       true ->
         {x, y}
-        |> offsets()
-        |> Enum.reject(&out_of_bounds?(matrix, &1))
-        |> Enum.filter(fn {x_i, y_i} ->
-          height + 1 == get_in(matrix, [Access.at!(y_i), Access.at!(x_i)])
-        end)
-        |> Enum.map(fn coords -> {height + 1, coords} end)
+        |> relevant_paths(height, matrix)
         |> Enum.map(fn point -> trace(point, matrix, ends) end)
         |> Enum.reduce(MapSet.new(), fn map, acc -> MapSet.union(map, acc) end)
     end
+  end
+
+  def relevant_paths({x, y}, height, matrix) do
+    {x, y}
+    |> offsets()
+    |> Enum.reject(&out_of_bounds?(matrix, &1))
+    |> Enum.filter(fn {x_i, y_i} ->
+      height + 1 == get_in(matrix, [Access.at!(y_i), Access.at!(x_i)])
+    end)
+    |> Enum.map(fn coords -> {height + 1, coords} end)
   end
 
   def parse(file) do
