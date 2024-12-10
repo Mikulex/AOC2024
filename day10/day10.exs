@@ -12,7 +12,35 @@ defmodule Day10 do
     |> Enum.reduce(0, fn map, acc -> acc + MapSet.size(map) end)
   end
 
-  def solve2(_file) do
+  def solve2(file) do
+    matrix = parse(file)
+
+    matrix
+    |> Enum.with_index(fn line, y ->
+      Enum.with_index(line, fn el, x -> {el, {x, y}} end)
+    end)
+    |> Enum.flat_map(&Function.identity/1)
+    |> Enum.filter(&match?({0, _}, &1))
+    |> Enum.map(&trace_count(&1, matrix))
+    |> Enum.sum()
+  end
+
+  def trace_count({height, {x, y}}, matrix, count \\ 0) do
+    cond do
+      height == 9 ->
+        count + 1
+
+      true ->
+        {x, y}
+        |> offsets()
+        |> Enum.reject(&out_of_bounds?(matrix, &1))
+        |> Enum.filter(fn {x_i, y_i} ->
+          height + 1 == get_in(matrix, [Access.at!(y_i), Access.at!(x_i)])
+        end)
+        |> Enum.map(fn coords -> {height + 1, coords} end)
+        |> Enum.map(fn point -> trace_count(point, matrix, count) end)
+        |> Enum.reduce(0, fn c, acc -> c + acc end)
+    end
   end
 
   def trace({height, {x, y}}, matrix, ends \\ MapSet.new()) do
@@ -52,5 +80,5 @@ input = "input.txt"
 
 IO.inspect(Day10.solve1(demo))
 IO.inspect(Day10.solve1(input))
-# IO.inspect(Day10.solve2(demo))
-# IO.inspect(Day10.solve2(input))
+IO.inspect(Day10.solve2(demo))
+IO.inspect(Day10.solve2(input))
