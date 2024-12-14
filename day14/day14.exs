@@ -1,9 +1,41 @@
 defmodule Day14 do
   def solve1(file, dimensions) do
-    [width, height] = dimensions
+    get_vectors(file)
+    |> get_robots_at(dimensions, 100)
+    |> get_quadrants(dimensions)
+    |> Enum.map(&Map.values/1)
+    |> Enum.map(&Enum.sum/1)
+    |> Enum.product()
+  end
 
-    parse(file)
-    |> Enum.map(fn robot -> Enum.at(robot, 100) end)
+  def solve2(file, dimensions) do
+    get_vectors(file)
+    |> find_symmetry(dimensions)
+  end
+
+  def find_symmetry(robots, [width, height], idx \\ 0, treshold \\ 200_000000) do
+    idx |> IO.inspect(label: "current")
+
+    freqs =
+      robots
+      |> get_robots_at([width, height], idx)
+
+    min =
+      freqs
+      |> get_quadrants([width, height])
+      |> Enum.map(&Map.values/1)
+      |> Enum.map(&Enum.sum/1)
+      |> Enum.product()
+      |> IO.inspect(label: "current vals")
+
+    if treshold >= min, do: print(freqs, [width, height])
+
+    find_symmetry(robots, [width, height], idx + 1, treshold)
+  end
+
+  def get_robots_at(robots, dimensions, seconds) do
+    robots
+    |> Enum.map(fn robot -> Enum.at(robot, seconds) end)
     |> Enum.map(fn robot ->
       Enum.zip_reduce(robot, dimensions, [], fn
         i, j, acc when i < 0 and rem(i, j) != 0 ->
@@ -14,21 +46,18 @@ defmodule Day14 do
       end)
     end)
     |> Enum.frequencies()
+  end
+
+  def get_quadrants(map, [width, height]) do
+    map
     |> Map.reject(fn {[x, y], _v} -> x == div(width, 2) or y == div(height, 2) end)
-    # |> print(dimensions)
     |> Map.split_with(fn {[x, _y], _v} -> x > div(width, 2) end)
     |> Tuple.to_list()
     |> Enum.map(fn map -> Map.split_with(map, fn {[_x, y], _v} -> y > div(height, 2) end) end)
     |> Enum.flat_map(fn maps -> Tuple.to_list(maps) end)
-    |> Enum.map(&Map.values/1)
-    |> Enum.map(&Enum.sum/1)
-    |> Enum.product()
   end
 
-  def solve2(file) do
-  end
-
-  def parse(file) do
+  def get_vectors(file) do
     File.read!(file)
     |> String.split("\n", trim: true)
     |> Enum.map(&Regex.scan(~r/-?\d+/, &1))
@@ -54,6 +83,8 @@ defmodule Day14 do
       |> Enum.map_join("\n", &Enum.join/1)
 
     IO.puts(res)
+    File.write("img.txt", res)
+    dbg()
     freqs
   end
 
@@ -66,5 +97,4 @@ input = "input.txt"
 
 IO.inspect(Day14.solve1(demo, [11, 7]))
 IO.inspect(Day14.solve1(input, [101, 103]))
-# IO.inspect(Day14.solve2(demo))
-# IO.inspect(Day14.solve2(input))
+IO.inspect(Day14.solve2(input, [101, 103]))
