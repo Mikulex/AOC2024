@@ -10,18 +10,49 @@ defmodule Day15 do
 
     ins = ins |> List.flatten() |> Enum.map(&Map.get(@offsets, &1))
 
-    start =
-      grid
-      |> Enum.with_index(fn line, y -> Enum.with_index(line, fn el, x -> {el, {x, y}} end) end)
-      |> List.flatten()
-      |> Enum.find(&match?({"@", _}, &1))
-      |> elem(1)
-      |> IO.inspect(label: "start")
+    start = find_start(grid)
 
     [grid, ins]
-    |> IO.inspect()
     |> move_robot(start)
     |> calculate_score()
+  end
+
+  def solve2(file) do
+    [grid, ins] =
+      File.read!(file)
+      |> String.split("\n\n", trim: true)
+
+    grid =
+      grid
+      |> String.replace(["#", "O", ".", "@"], fn
+        "#" -> "##"
+        "O" -> "[]"
+        "." -> ".."
+        "@" -> "@."
+      end)
+      |> String.split("\n", trim: true)
+      |> Enum.map(&String.split(&1, "", trim: true))
+
+    ins =
+      ins
+      |> String.split("\n", trim: true)
+      |> Enum.map(&String.split(&1, "", trim: true))
+      |> List.flatten()
+      |> Enum.map(&Map.get(@offsets, &1))
+
+    start = find_start(grid)
+
+    [grid, ins]
+    |> move_robot(start)
+    |> calculate_score()
+  end
+
+  def find_start(grid) do
+    grid
+    |> Enum.with_index(fn line, y -> Enum.with_index(line, fn el, x -> {el, {x, y}} end) end)
+    |> List.flatten()
+    |> Enum.find(&match?({"@", _}, &1))
+    |> elem(1)
   end
 
   def calculate_score(grid) do
@@ -30,6 +61,7 @@ defmodule Day15 do
     |> List.flatten()
     |> Enum.reduce(0, fn
       {"O", {x, y}}, acc -> acc + (100 * y + x)
+      {"[", {x, y}}, acc -> acc + (100 * y + x)
       _, acc -> acc
     end)
   end
@@ -37,39 +69,123 @@ defmodule Day15 do
   def move_robot([grid, []], _start), do: grid
 
   def move_robot([grid, [head | tail]], pos) do
-    [pos, head] |> IO.inspect(label: "current")
-
     boxes =
       Stream.iterate(pos, fn c -> add(c, head) end)
       |> Stream.drop(1)
       |> Enum.take_while(fn vec ->
-        not out_of_bounds?(grid, vec) and get_in_grid(grid, vec) == "O"
+        Enum.any?(["O", "[", "]"], &(get_in_grid(grid, vec) == &1))
       end)
 
-    last_box = if is_nil(boxes), do: nil, else: List.last(boxes)
+    next = add(pos, head)
 
     cond do
-      is_nil(last_box) ->
-        next = add(pos, head)
+      is_nil(boxes) or Enum.empty?(boxes) ->
+        move_without_box(grid, pos, next, tail)
 
-        if get_in_grid(grid, next) == "." do
-          grid
-          |> update_grid(pos, ".")
-          |> update_grid(next, "@")
-          |> then(fn g -> move_robot([g, tail], next) end)
-        else
-          move_robot([grid, tail], pos)
+      # Part 1
+      get_in_grid(grid, List.last(boxes)) == "O" ->
+        move_box_in_line(grid, head, tail, pos, next, boxes)
+
+      # Part 2
+      Enum.any?(["[", "]"], &(get_in_grid(grid, List.last(boxes)) == &1)) ->
+        case head do
+          # no vertical movement -> just push
+          {_x, 0} ->
+            move_box_in_line(grid, head, tail, pos, next, boxes)
+
+          # vertical movement
+          {0, _y} ->
+            first = hd(boxes)
+
+            large_boxes =
+              case get_in_grid(grid, first) do
+                "[" ->
+                  find_boxes(grid, head, [[first, add(first, {1, 0})]])
+
+                "]" ->
+                  find_boxes(grid, head, [[add(first, {-1, 0}), first]])
+              end
+
+            case large_boxes do
+              nil ->
+                move_robot([grid, tail], pos)
+
+              _ ->
+                grid =
+                  Enum.reduce(large_boxes, grid, fn boxes, acc ->
+                    Enum.reduce(boxes, acc, fn box, inner_acc ->
+                      inner_acc
+                      |> update_grid(add(box, head), get_in_grid(grid, box))
+                      |> update_grid(box, ".")
+                    end)
+                  end)
+                  |> update_grid(pos, ".")
+                  |> update_grid(next, "@")
+                  |> then(fn g -> move_robot([g, tail], next) end)
+            end
         end
+    end
+  end
 
-      get_in_grid(grid, add(last_box, head)) == "#" ->
-        move_robot([grid, tail], pos)
+  def find_boxes(grid, dir, [cur_row | tail]) do
+    next_row_small = cur_row |> Enum.map(&add(&1, dir))
+    {min, y} = hd(next_row_small)
+    {max, _} = List.last(next_row_small)
 
-      get_in_grid(grid, add(last_box, head)) == "." ->
-        grid
-        |> update_grid(hd(boxes), "@")
+    cond do
+      next_row_small |> Enum.any?(&(get_in_grid(grid, &1) == "#")) ->
+        nil
+
+      next_row_small |> Enum.all?(&(get_in_grid(grid, &1) == ".")) ->
+        [cur_row | tail]
+
+      true ->
+        next_row =
+          Stream.iterate({min - 1, y}, fn v -> add(v, {1, 0}) end)
+          |> Enum.take_while(fn {xi, _yi} -> xi <= max + 1 end)
+          |> Enum.filter(fn box ->
+            Enum.any?(["[", "]"], &(get_in_grid(grid, box) == &1))
+          end)
+
+        next_row =
+          if get_in_grid(grid, hd(next_row)) == "]", do: tl(next_row), else: next_row
+
+        next_row =
+          if get_in_grid(grid, List.last(next_row)) == "[",
+            do: List.delete_at(next_row, length(next_row) - 1),
+            else: next_row
+
+        find_boxes(grid, dir, [next_row, cur_row | tail])
+    end
+  end
+
+  def move_without_box(grid, pos, next, ins) do
+    # robot blocked?
+    if get_in_grid(grid, next) == "." do
+      grid
+      |> update_grid(pos, ".")
+      |> update_grid(next, "@")
+      |> then(fn g -> move_robot([g, ins], next) end)
+    else
+      move_robot([grid, ins], pos)
+    end
+  end
+
+  def move_box_in_line(grid, dir, ins, pos, next, boxes) do
+    last_box = List.last(boxes)
+
+    case get_in_grid(grid, add(last_box, dir)) do
+      "#" ->
+        move_robot([grid, ins], pos)
+
+      # box movable?
+      "." ->
+        Enum.reduce(boxes, grid, fn box, acc ->
+          acc |> update_grid(add(box, dir), get_in_grid(grid, box))
+        end)
         |> update_grid(pos, ".")
-        |> update_grid(add(last_box, head), "O")
-        |> then(fn g -> move_robot([g, tail], add(pos, head)) end)
+        |> update_grid(next, "@")
+        |> then(fn g -> move_robot([g, ins], next) end)
     end
   end
 
@@ -88,3 +204,5 @@ input = "input.txt"
 
 IO.inspect(Day15.solve1(demo))
 IO.inspect(Day15.solve1(input))
+IO.inspect(Day15.solve2(demo))
+IO.inspect(Day15.solve2(input))
