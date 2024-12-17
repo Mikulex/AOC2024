@@ -73,9 +73,7 @@ defmodule Day16 do
             if {el.pos, el.dir} in tail_positions do
               acc
               |> update_in([Access.find(&node_eq?(&1, el)), :cost], &min(el.cost, &1))
-              |> update_in([Access.find(&node_eq?(&1, el)), :prev], fn _ ->
-                el.prev
-              end)
+              |> update_in([Access.find(&node_eq?(&1, el)), :prev], fn _ -> el.prev end)
             else
               [el | acc]
             end
@@ -96,7 +94,7 @@ defmodule Day16 do
 
   def get_in_grid(matrix, {x, y}), do: get_in(matrix, [Access.at(y), Access.at(x)])
   def add({a, b}, {c, d}), do: {a + c, b + d}
-  def node_eq?(n1, node), do: n1.pos == n2.pos and n1.dir == n2.dir
+  def node_eq?(n1, n2), do: n1.pos == n2.pos and n1.dir == n2.dir
 
   def update_grid(grid, {{x, y}, val}),
     do: List.replace_at(grid, y, List.replace_at(Enum.at(grid, y), x, val))
