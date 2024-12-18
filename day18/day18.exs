@@ -16,6 +16,26 @@ defmodule Day18 do
     print(corr, dim, path)
   end
 
+  def solve2(file, dim, amount) do
+    list = parse(file)
+
+    IO.write("\n")
+
+    res =
+      Stream.from_index(amount)
+      |> Enum.find(fn a ->
+        IO.write("\rcurrent: #{a}")
+        corr = list |> Enum.take(a)
+
+        :none ==
+          shortest_path(corr, dim, {dim - 1, dim - 1}, MapSet.new(), [
+            %{pos: {0, 0}, dist: 0, prev: nil}
+          ])
+      end)
+
+    Enum.at(list, res - 1)
+  end
+
   def parse(file) do
     File.read!(file)
     |> String.split("\n", trim: true)
@@ -26,6 +46,8 @@ defmodule Day18 do
   def backtrack(head, path) when head.prev == nil, do: path
 
   def backtrack(head, path), do: backtrack(head.prev, [head | path])
+
+  def shortest_path(_corr, _dim, _fin, _visited, []), do: :none
 
   def shortest_path(_corr, _dim, fin, visited, [head | _tail]) when head.pos == fin,
     do: {head, visited}
@@ -97,3 +119,5 @@ input = "input.txt"
 
 IO.inspect(Day18.solve1(demo, 7, 12))
 IO.inspect(Day18.solve1(input, 71, 1024))
+IO.inspect(Day18.solve2(demo, 7, 12))
+IO.inspect(Day18.solve2(input, 71, 1024))
